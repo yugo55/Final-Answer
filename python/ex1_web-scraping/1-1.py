@@ -50,11 +50,11 @@ for url in restaurants_url_array:
   # 住所
   address = html.select_one("span.region").text
   # 都道府県
-  bool = address.startswith("京都")
-  pref_regexp = r"^.+?(道|府|県)" if bool else r"^.+?(都|道|府|県)"
+  start_with_kyoto = address.startswith("京都")
+  pref_regexp = r"^.+?(道|府|県)" if start_with_kyoto else r"^.+?(都|道|府|県)"
   pref = re.match(pref_regexp, address).group()
   # 市区町村
-  city_regexp = r"(?<=道|府|県)\D+" if bool else r"(?<=都|道|府|県)\D+"
+  city_regexp = r"(?<=道|府|県)\D+" if start_with_kyoto else r"(?<=都|道|府|県)\D+"
   city = re.search(city_regexp, address).group()
   # 番地
   street_address = re.search(r"\d+(-|\d)+$", address).group() if re.search(r"\d+(-|\d)+", address) is not None else ""
