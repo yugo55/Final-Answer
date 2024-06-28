@@ -20,10 +20,11 @@ def get_restaurants_url(url):
 
 def get_email():
   all_table_a = html.select(".basic-table a")
+  email = ""
   for a in all_table_a:
     if "mailto" in a.get("href"):
       email = a.get("href").replace("mailto:", "")
-  return email if email else ""
+  return email
   
 def ssl_exists():
   parsed_url = urllib.parse.urlparse(url)
