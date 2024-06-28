@@ -15,8 +15,42 @@ chrome_service = service.Service(executable_path=CHROMEDRIVER)
 driver = webdriver.Chrome(service=chrome_service)
 driver.get("https://r.gnavi.co.jp/area/jp/rs/?date=20240626")
 
+def get_email():
+  all_table_a = driver.find_elements(by=By.CSS_SELECTOR, value=".basic-table a")
+  email = ""
+  for a in all_table_a:
+    if "mailto" in a.get_attribute("href"):
+      email = a.get_attribute("href").replace("mailto:", "")
+  return email
+
+def get_restaurant_url():
+  all_restaurant_url = driver.find_elements(by=By.CSS_SELECTOR, value="div#sv ul#sv-site a")
+  restaurant_url = ""
+  for url in all_restaurant_url:
+    if url.text == "オフィシャルページ":
+      restaurant_url = url.get_attribute("href")
+      break
+  return restaurant_url
+
+def ssl_exists():
+  parsed_url = urllib.parse.urlparse(indiv_page_url)
+  hostname = parsed_url.hostname
+  port = parsed_url.port if parsed_url.port else 443
+  try:
+    context = ssl.create_default_context()
+    with socket.create_connection((hostname, port)) as sock:
+      with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+        cert = ssock.getpeercert()
+        if cert:
+          return True
+  except ssl.SSLError:
+    return False
+  except Exception as e:
+    print(f"Error: {e}")
+    return False
+
 restaurants_info = []
-while len(restaurants_info) < 50:
+while True:
   # 店舗ページのurlを取得
   restaurants_a = driver.find_elements(by=By.CSS_SELECTOR, value=".style_titleLink__oiHVJ")
   restaurants_url_array = [a.get_attribute("href") for a in restaurants_a]
@@ -31,11 +65,7 @@ while len(restaurants_info) < 50:
     name = driver.find_element(by=By.ID, value="info-name").text
 
     # メールアドレス
-    all_table_a = driver.find_elements(by=By.CSS_SELECTOR, value=".basic-table a")
-    email = ""
-    for a in all_table_a:
-      if "mailto" in a.get_attribute("href"):
-        email = a.get_attribute("href").replace("mailto:", "")
+    email = get_email()
 
     # 電話番号
     phone_num = driver.find_element(by=By.CSS_SELECTOR, value="span.number").text
@@ -59,29 +89,10 @@ while len(restaurants_info) < 50:
       building = ""
 
     # URL
-    all_restaurant_url = driver.find_elements(by=By.CSS_SELECTOR, value="div#sv ul#sv-site a")
-    restaurant_url = ""
-    for url in all_restaurant_url:
-      if url.text == "オフィシャルページ":
-        restaurant_url = url.get_attribute("href")
-        break
+    restaurant_url = get_restaurant_url()
     
     # SSL
-    parsed_url = urllib.parse.urlparse(indiv_page_url)
-    hostname = parsed_url.hostname
-    port = parsed_url.port if parsed_url.port else 443
-    try:
-      context = ssl.create_default_context()
-      with socket.create_connection((hostname, port)) as sock:
-        with context.wrap_socket(sock, server_hostname=hostname) as ssock:
-          cert = ssock.getpeercert()
-          if cert:
-            has_ssl = True
-    except ssl.SSLError:
-      has_ssl = False
-    except Exception as e:
-      print(f"Error: {e}")
-      has_ssl = False
+    has_ssl = ssl_exists()
 
     restaurants_info.append({
       "店舗名": name,
@@ -95,7 +106,13 @@ while len(restaurants_info) < 50:
       "SSL": has_ssl
     })
 
+    if is_50_info := len(restaurants_info) == 50:
+      break
+
     driver.back()
+  
+  if is_50_info:
+    break
     
   next_btn = driver.find_element(by=By.CSS_SELECTOR, value="ul.style_pages__Y9bbR li:nth-last-child(2) a")
   next_btn.click()
