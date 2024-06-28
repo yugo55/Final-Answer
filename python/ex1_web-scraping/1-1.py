@@ -18,6 +18,30 @@ def get_restaurants_url(url):
     if len(restaurants_url_array) == 50:
       break
 
+def get_email():
+  all_table_a = html.select(".basic-table a")
+  for a in all_table_a:
+    if "mailto" in a.get("href"):
+      email = a.get("href").replace("mailto:", "")
+  return email if email else ""
+  
+def ssl_exists():
+  parsed_url = urllib.parse.urlparse(url)
+  hostname = parsed_url.hostname
+  port = parsed_url.port if parsed_url.port else 443
+  try:
+    context = ssl.create_default_context()
+    with socket.create_connection((hostname, port)) as sock:
+      with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+        cert = ssock.getpeercert()
+        if cert:
+          return True
+  except ssl.SSLError:
+    return False
+  except Exception as e:
+    print(f"Error: {e}")
+    return False
+  
 headers = {
   "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 }
@@ -42,11 +66,7 @@ for url in restaurants_url_array:
   # 電話番号
   phone_num = html.select_one("span.number").text
   # メールアドレス
-  all_table_a = html.select(".basic-table a")
-  email = ""
-  for a in all_table_a:
-    if "mailto" in a.get("href"):
-      email = a.get("href").replace("mailto:", "")
+  email = get_email()
   # 住所
   address = html.select_one("span.region").text
   # 都道府県
@@ -64,21 +84,7 @@ for url in restaurants_url_array:
   # URL
   restaurant_url = ""
   # SSL
-  parsed_url = urllib.parse.urlparse(url)
-  hostname = parsed_url.hostname
-  port = parsed_url.port if parsed_url.port else 443
-  try:
-    context = ssl.create_default_context()
-    with socket.create_connection((hostname, port)) as sock:
-      with context.wrap_socket(sock, server_hostname=hostname) as ssock:
-        cert = ssock.getpeercert()
-        if cert:
-          has_ssl = True
-  except ssl.SSLError:
-    has_ssl = False
-  except Exception as e:
-    print(f"Error: {e}")
-    has_ssl = False
+  has_ssl = ssl_exists()
 
   restaurants_info.append({
     "店舗名": name,
