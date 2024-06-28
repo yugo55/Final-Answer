@@ -100,4 +100,4 @@ for url in restaurants_url_array:
   })
 
 df = pd.DataFrame(restaurants_info)
-df.to_csv("1-1.csv", index = False)
+df.to_csv("1-1.csv", index = False, encoding="utf-8_sig")

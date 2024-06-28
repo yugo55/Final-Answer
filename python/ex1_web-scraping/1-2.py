@@ -3,6 +3,7 @@ from selenium.webdriver.chrome import service
 from selenium.webdriver.common.by import By
 from  selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
 import pandas as pd
 import re
 import time
@@ -10,9 +11,13 @@ import socket
 import ssl
 import urllib
 
+custom_user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+options = Options()
+options.add_argument(f"--user-agent={custom_user_agent}")
+
 CHROMEDRIVER = "./chromedriver.exe"
 chrome_service = service.Service(executable_path=CHROMEDRIVER)
-driver = webdriver.Chrome(service=chrome_service)
+driver = webdriver.Chrome(service=chrome_service, options=options)
 driver.get("https://r.gnavi.co.jp/area/jp/rs/?date=20240626")
 
 def get_email():
@@ -24,15 +29,21 @@ def get_email():
   return email
 
 def get_restaurant_url():
-  all_restaurant_url = driver.find_elements(by=By.CSS_SELECTOR, value="div#sv ul#sv-site a")
+  all_service_url = driver.find_elements(by=By.CSS_SELECTOR, value="div#sv ul#sv-site a")
   restaurant_url = ""
-  for url in all_restaurant_url:
-    if url.text == "オフィシャルページ":
+  for url in all_service_url:
+    if url.text == "オフィシャル\nページ":
       restaurant_url = url.get_attribute("href")
       break
+  all_table_a = driver.find_elements(by=By.CSS_SELECTOR, value="#info-table > table.basic-table tr a")
+  if restaurant_url == "":
+    for a in all_table_a:
+      if a.text == "お店のホームページ":
+        restaurant_url = a.get_attribute("href")
+        break
   return restaurant_url
 
-def ssl_exists():
+def ssl_exists(indiv_page_url):
   parsed_url = urllib.parse.urlparse(indiv_page_url)
   hostname = parsed_url.hostname
   port = parsed_url.port if parsed_url.port else 443
@@ -92,7 +103,7 @@ while True:
     restaurant_url = get_restaurant_url()
     
     # SSL
-    has_ssl = ssl_exists()
+    has_ssl = ssl_exists(indiv_page_url)
 
     restaurants_info.append({
       "店舗名": name,
@@ -116,8 +127,9 @@ while True:
     
   next_btn = driver.find_element(by=By.CSS_SELECTOR, value="ul.style_pages__Y9bbR li:nth-last-child(2) a")
   next_btn.click()
+  time.sleep(1)
 
 df = pd.DataFrame(restaurants_info)
-df.to_csv("1-2.csv", index = False)
+df.to_csv("1-2.csv", index = False, encoding="utf-8_sig")
 
 driver.quit()
